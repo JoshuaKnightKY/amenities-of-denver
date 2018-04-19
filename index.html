@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset=utf-8 />
+  <title>Amenities of Denver, CO</title>
+  <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.3.1/dist/leaflet.css" />
+  <link href='http://fonts.googleapis.com/css?family=Lato' rel='stylesheet' type='text/css'>
+  <link href="https://fonts.googleapis.com/css?family=Forum|Freckle+Face|Nanum+Pen+Script" rel="stylesheet">
+
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: whitesmoke;
+      font-family: 'Forum', cursive;
+      font-size: 150%;
+      color: #0D0000;
+    }
+
+    header {
+      padding: 6px 10%;
+    }
+
+    h1 {
+      font-family: 'Freckle Face', cursive;
+      display: inline-block;
+      margin-right: 20px;
+      color: #001323;
+    }
+
+    h2 {
+      font-family: 'Nanum Pen Script', cursive;
+      font-size: 99%;
+      display: inline-block;
+      color: #001323;
+    }
+
+    #map {
+      width: 80%;
+      height: 540px;
+      margin: 10px auto;
+    }
+
+    footer {
+      padding: 6px 10%;
+      width: 80%;
+    }
+
+    p {
+      font-size: 1em;
+      color: #001323;
+    }
+
+    a {
+      font-size: 1em;
+      text-decoration: none;
+      color: #004BFF3;
+      font-weight: bold;
+    }
+
+  </style>
+</head>
+
+<body>
+  <header>
+    <h1>Amenities of Denver</h1>
+    <h2>Fire stations, Food stores, and After school programs, Oh My!</h2>
+  </header>
+
+  <div id='map'></div>
+
+  <footer>
+    <p>Map authored by Joshua Knight</p>
+    <p>Using data from the <a href="https://www.denvergov.org/opendata/">Denver Open Data Catalog</a>,
+      this interactive map shows all <b><font color="#960000">Fire Stations</font>, <font color="#58AC07">Food Stores</font>,
+      and <font color="#008196">After School Programs</font></b>
+      in the city of Denver Colorado.</p>
+    <p>Clicking anywhere on the map will highlight only those amenities within 1 kilometer of the location clicked.
+      Amentities can be toggled on and off by type using the check boxes/legend in the upper right corner of the map.<p>
+    <p>Placing the mouse over an amenity will show a tooltip with more information about it.</p>
+  </footer>
+
+  <script src="https://unpkg.com/leaflet@1.3.1/dist/leaflet.js"></script>
+  <!-- geoJson files with data -->
+  <script src="data/after-school-programs.js"></script>
+  <script src="data/denver-fire-stations.js"></script>
+  <script src="data/denver-food-stores.js"></script>
+
+  <script>
+    var map = L.map('map', {
+      center: [39.7256, -104.9252],
+      zoom: 11,
+    });
+
+    var tiles = L.tileLayer('https://cartodb-basemaps-{s}.global.ssl.fastly.net/rastertiles/dark_all/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="http://cartodb.com/attributions">CartoDB</a>',
+      subdomains: 'abcd',
+      maxZoom: 19
+    }).addTo(map);
+
+
+    // define attributes common to all displayed markers
+    var commonStyles = {
+      weight: 1,
+      stroke: 0,
+      fillOpacity: 1,
+      radius: 10
+    }
+
+    // draw after school program layer
+    var programsLayer = L.geoJson(programs, {
+      pointToLayer: function(feature,latlng) {
+        return L.circleMarker(latlng, commonStyles);
+      },
+
+      onEachFeature : function(feature,layer) {
+        layer.on('mouseover', function() {
+          // display tooltip
+          geoJsonLayers.programsLayer.bindTooltip("<b>Organization Name: </b><BR>" + layer.feature.properties.ORGANIZATI);
+        });
+
+      },
+
+      style: function(feature) {
+        return {
+          color: '#01D9FC',
+          fillColor: '#008196'
+        }
+      }
+    }).addTo(map);
+
+
+    // draw food store layer
+    var storesLayer = L.geoJson(stores, {
+      pointToLayer: function(feature,latlng) {
+        return L.circleMarker(latlng, commonStyles);
+      },
+
+      onEachFeature : function(feature,layer) {
+        layer.on('mouseover', function() {
+          // display tooltip
+          geoJsonLayers.storesLayer.bindTooltip("<b>Store Name: </b><BR>" + layer.feature.properties.STORE_NAME);
+        });
+
+      },
+
+      style: function(feature) {
+        return {
+          color: '#7FF80A',
+          fillColor: '#58AC07'
+        }
+      }
+
+    }).addTo(map);
+
+    // draw Fire Stations last (fewer in number)
+    var stationsLayer = L.geoJson(stations, {
+      pointToLayer: function(feature,latlng) {
+        return L.circleMarker(latlng, commonStyles);
+      },
+
+      onEachFeature : function(feature,layer) {
+        layer.on('mouseover', function() {
+          // display tooltip
+          geoJsonLayers.stationsLayer.bindTooltip("<b>Fire Station Number: </b><BR>" + layer.feature.properties.STATION_NU);
+        });
+
+      },
+
+      style: function(feature) {
+        return {
+          color: '#FF0000',
+          fillColor: '#960000'
+        }
+      }
+    }).addTo(map);
+
+    // click behavior:  all Food Stores more than 1 km of where user clicks drop to 10% opacity
+    map.on('click', function(e) {
+      storesLayer.eachLayer(function(layer) {
+        var distance = e.latlng.distanceTo(layer.getLatLng())/1000; // distance as km
+
+        if(distance > 1) {
+            layer.setStyle({
+              fillOpacity: .1
+            });
+        } else {
+          // on 2nd click, returns features to normal opacity when they are clicked near
+            layer.setStyle({
+              fillOpacity: 1
+            });
+        }
+      });
+    });
+
+    // click behavior:  all Fire Stations more than 1 km of where user clicks drop to 10% opacity
+    map.on('click', function(e) {
+      stationsLayer.eachLayer(function(layer) {
+        var distance = e.latlng.distanceTo(layer.getLatLng())/1000; // distance as km
+
+        if(distance > 1) {
+            layer.setStyle({
+              fillOpacity: .1
+            });
+        } else {
+          // on 2nd click, returns features to normal opacity when they are clicked near
+            layer.setStyle({
+              fillOpacity: 1
+            });
+        }
+      });
+    });
+
+    // click behavior:  all After School Programs more than 1 km of where user clicks drop to 10% opacity
+    map.on('click', function(e) {
+      programsLayer.eachLayer(function(layer) {
+        var distance = e.latlng.distanceTo(layer.getLatLng())/1000; // distance as km
+
+        if(distance > 1) {
+            layer.setStyle({
+              fillOpacity: .1
+            });
+        } else {
+          // on 2nd click, returns features to normal opacity when they are clicked near
+            layer.setStyle({
+              fillOpacity: 1
+            });
+        }
+      });
+    });
+
+    // click behavior:  all Fire Stations more than 1 km of where user clicks drop to 10% opacity, draw last
+    map.on('click', function(e) {
+      stationsLayer.eachLayer(function(layer) {
+        var distance = e.latlng.distanceTo(layer.getLatLng())/1000; // distance as km
+
+        if(distance > 1) {
+            layer.setStyle({
+              fillOpacity: .1
+            });
+        } else {
+          // on 2nd click, returns features to normal opacity when they are clicked near
+            layer.setStyle({
+              fillOpacity: 1
+            });
+        }
+      });
+    });
+
+    // create object of all layers
+    var geoJsonLayers = {
+          programsLayer: programsLayer,
+          stationsLayer: stationsLayer,
+          storesLayer: storesLayer
+    };
+
+
+    // filter box for toggling features
+    var sourcesLabels = {
+      "<b style='color:#01D9FC; text-shadow: 1px 1px 1px #000;'>After School Programs</b>": geoJsonLayers.programsLayer,
+      "<b style='color:#FF0000; text-shadow: 1px 1px 1px #000;'>Fire Stations</b>": geoJsonLayers.stationsLayer,
+      "<b style='color:#7FF80A; text-shadow: 1px 1px 1px #000;'>Food Stores</b>": geoJsonLayers.storesLayer,
+    };
+
+    // assign source labels to toggle box
+    L.control.layers(null, sourcesLabels, { collapsed:false }).addTo(map);
+    console.log(geoJsonLayers);
+
+
+  </script>
+
+</body>
+
+</html>
